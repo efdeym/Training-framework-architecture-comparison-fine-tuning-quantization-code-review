@@ -1,0 +1,2 @@
+exp_name: mnv3_large
+model: {name: mobilenetv3_large_100}

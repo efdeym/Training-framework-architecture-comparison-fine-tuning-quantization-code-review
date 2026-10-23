@@ -1,0 +1,2 @@
+exp_name: effnet_b0
+model: {name: efficientnet_b0}

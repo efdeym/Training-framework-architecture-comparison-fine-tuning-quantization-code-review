@@ -1,0 +1,8 @@
+exp_name: baseline
+seed: 42
+out_dir: runs
+logger: none
+data: {root: data/flowers, img_size: 224, test_img_size: 224, batch_size: 64, num_workers: 4}
+aug: {color_jitter: 0.1, mixup: 0.0, cutmix: 0.0, label_smoothing: 0.1}
+model: {name: mobilenetv3_large_100, pretrained: true, drop_rate: 0.2}
+train: {epochs: 30, lr: 0.001, head_lr_mult: 10, linear_probe_epochs: 3, ema_decay: 0.0}

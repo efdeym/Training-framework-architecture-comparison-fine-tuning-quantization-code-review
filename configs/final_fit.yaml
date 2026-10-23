@@ -1,0 +1,3 @@
+# SON eğitim: model seçimi bittikten sonra. Train+valid+test birleşik, best.pt yok -> last.pt kullan.
+exp_name: final
+data: {final_fit: true}
