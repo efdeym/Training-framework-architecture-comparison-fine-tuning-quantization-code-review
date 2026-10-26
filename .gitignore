@@ -5,3 +5,7 @@ __pycache__/
 *.pt
 *.pth
 .ipynb_checkpoints/
+.venv/ 
+data/ 
+flower_data.tar.gz 
+*.egg-info/ 

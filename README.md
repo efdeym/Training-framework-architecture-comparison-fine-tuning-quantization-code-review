@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Flower Classifier (102 sınıf)
 
 Çiçek türü sınıflandırıcısı. Değerlendirme kriterleri: **top-1 doğruluk (gizli test)**, **ms/görüntü**, **MB**.
