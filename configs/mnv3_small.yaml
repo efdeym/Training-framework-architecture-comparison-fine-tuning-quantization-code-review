@@ -1,0 +1,3 @@
+exp_name: mnv3_small
+model: {name: mobilenetv3_small_100}
+train: {epochs: 10, linear_probe_epochs: 10}
