@@ -14,6 +14,7 @@ class DataCfg:
     batch_size: int = 64
     num_workers: int = 4
     balanced_sampler: bool = False      # sınıf dengesizliği için hafif sampler
+    exclude_train: list = field(default_factory=list)  # train'den çıkarılacak dosya adları (veri sızıntısı)
     final_fit: bool = False             # True: train+valid(+test) birleşik eğitim (SON adım!)
     include_test_in_final: bool = True
 
