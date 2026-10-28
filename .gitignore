@@ -1,4 +1,4 @@
-data/
+/data/
 runs/
 results/
 __pycache__/
@@ -6,6 +6,6 @@ __pycache__/
 *.pth
 .ipynb_checkpoints/
 .venv/ 
-data/ 
+/data/ 
 flower_data.tar.gz 
 *.egg-info/ 
