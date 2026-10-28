@@ -1,0 +1,1 @@
+"""Veri ve donusum modulu."""
