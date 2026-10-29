@@ -86,3 +86,22 @@ Kaynak: `src/flowers/evaluation/benchmark.py` içindeki `measure_latency_ms` (ko
 - `scripts/benchmark.py` (cpu, 1 thread, tag `dummy-c7`) satırı: `mean_ms` 11.299, `p95_ms` 15.741, `size_mb` 6.17, `img_size` 224, `top1` nan.
 - Benchmark geçici dizinde çalıştırıldı ve `results/benchmarks.csv` kirletilmedi; geçici dosyalar silindi.
 - Tek çalıştırma, tek makine. Gerçek `best.pt` ile tekrarlanmadı.
+
+## C15-C19 - Dört modelin CPU karşılaştırması
+
+Dört `best.pt` (`runs/*_full/`) `scripts/export.py` ile fp32 TorchScript'e çevrildi, `scripts/benchmark.py` ile ölçüldü. Değerler `results/benchmarks.csv` dosyasından alındı.
+
+Ölçüm ayarları (kod okunarak doğrulandı): CPU, 1 thread, batch=1, girdi 224x224, warm-up 20, 200 ölçüm, `inference_mode`. Ön işleme (decode, resize) ölçüme dahil değil. GPU yok (`cuda: False`), GPU ölçümü yapılmadı.
+
+| Model | Mimari | Boyut (MB) | Ortalama (ms) | p95 (ms) |
+|---|---|---|---|---|
+| mnv3_small | mobilenetv3_small_100 | 6.20 | 7.194 | 9.895 |
+| mnv3_large | mobilenetv3_large_100 | 16.52 | 17.169 | 22.116 |
+| effnet_b0 | efficientnet_b0 | 15.76 | 37.100 | 46.398 |
+| convnext_nano | convnext_nano | 57.32 | 98.416 | 129.536 |
+
+Gözlemler:
+- Bu ölçümde en hızlı ve en küçük model mnv3_small, en yavaş ve en büyük convnext_nano oldu.
+- Boyut ile hız doğrudan orantılı değil: effnet_b0 (15.76 MB) mnv3_large'dan (16.52 MB) biraz küçük ama yaklaşık 2 kat yavaş.
+- Her model için tek çalıştırma, tek makine. `mnv3_small` satırı bu oturumdaki ilk ölçümden geldi, yeniden ölçülmedi. C3'te aynı makinede ~1.2 ms standart sapma gözlenmişti; yakın değerler arasında sıralama kesin kabul edilmemeli.
+- `top1` sütunu `nan`: doğruluk bu tabloda yok, bu yüzden hız/boyut sıralaması doğruluk hakkında bir şey söylemez.
