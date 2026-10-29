@@ -20,7 +20,6 @@ Katmanlı mimari ve sınıf amaçları için: [`docs/ARCHITECTURE.md`](docs/ARCH
 
 ## Sonuçlar
 
-## Sonuçlar
 
 Yalnızca ölçülmüş değerler. Doğruluklar `evaluate.py` ile (valid 818, test 819 görsel); gecikme CPU, batch=1, yalnızca model ileri geçişi.
 
