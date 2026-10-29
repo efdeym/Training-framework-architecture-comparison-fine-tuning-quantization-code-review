@@ -33,3 +33,8 @@ Batch=1'de 14 thread, 1 thread'den yavaş çıktı. Ön işleme dahil uçtan uca
 Valid 9-13. epoch'ta doygunluğa ulaştı (%98,9-99,1); sonraki 17 epoch iyileşme getirmedi. 
 Large ile fark 2 görsel (gürültü sınırı); hız farkı (16,4 vs 8,4 ms) belirleyici. 
 Aday: Large. Not: train.log test_top1=0,9927 (last.pt?) ile evaluate.py test=0,9902 (best.pt?) farkı kontrol edilecek.
+
+### LP-FT deneyi (A21)
+LP=3 (ana koşu) valid %99,27 / en iyi %99,39; LP=0 valid %99,14 / en iyi %99,39. 
+Fark 1 görsel (gürültü sınırı). Karar: LP=3 varsayılan kalır. LP=0 daha hızlı ısınıyor ama sonuç aynı.
+
