@@ -1,0 +1,5 @@
+Model,Mimari,Valid Top-1 (%),Gölge Top-1 (%),Genelleme Farkı (%)
+mnv3_small_full,mobilenetv3_small_100,93.15,18.95,74.2
+mobilenetv3_full,mobilenetv3_large_100,99.39,26.8,72.59
+efficientnet_b0_full,efficientnet_b0,99.14,24.51,74.63
+convnext_nano_full,convnext_nano,99.39,25.16,74.23

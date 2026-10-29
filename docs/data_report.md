@@ -44,3 +44,10 @@ Veri kümesinde toplam **8.189** adet görsel taranmış ve doğrulanmıştır:
 ## 4. Görsel Çeşitlilik ve Niteliksel Gözlemler (B8)
 - **Arka Plan:** Hem bokeh (flu/bulanık odaklı) hem de doğal yeşillikli karmaşık zeminler bulunmaktadır.
 - **Renk ve Morfoloji:** Tek renkli çiçeklerin yanı sıra alacalı/çok renkli çiçekler mevcuttur. Model yalnızca renge odaklanmamalı; taç yaprak formu, doku ve kenar geometrisini öğrenecek şekilde eğitilmelidir.
+
+## Veri Sızıntısı (Data Leakage) Tespiti
+- **MD5 Hash:** `d5de43837c54fac145cb6d22fea210d0`
+- **Train Görseli:** `train/1/image_08077.jpg` (veya ilgili sınıf)
+- **Valid Görseli:** `valid/1/image_08067.jpg`
+- **Çözüm:** Eğitim konfigürasyonuna (`configs/base.yaml`) `exclude_train: [image_08077.jpg]` filtresi uygulanarak sızıntı önlenmiştir.
+- **Test Seti Sayısı:** 819 (Dokümantasyondaki 921 değeri dizgi hatasıdır, 6552 + 818 + 819 = 8189 toplam görsel doğrulanmıştır).
