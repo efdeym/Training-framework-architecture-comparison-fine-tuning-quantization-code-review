@@ -58,6 +58,7 @@ class FlowerClassifier:
         self.mean = torch.tensor(self.meta["mean"], device=self.device).view(1, 3, 1, 1)
         self.std = torch.tensor(self.meta["std"], device=self.device).view(1, 3, 1, 1)
         self.size, self.crop_pct = self.meta["img_size"], self.meta["crop_pct"]
+        self.norm_in_model = bool(self.meta.get("norm_in_model", False))
         # Sınıf adları (opsiyonel): klasör adı -> çiçek adı. Verilmezse predict.py'nin yanındaki dosya aranır.
         names_path = names_path or os.path.join(HERE, "cat_to_name.json")
         self.names = {}
@@ -84,7 +85,8 @@ class FlowerClassifier:
 
     def _logits(self, paths) -> torch.Tensor:
         x = torch.stack([self._load(p) for p in paths]).to(self.device)
-        x = (x - self.mean) / self.std
+        if not self.norm_in_model:
+            x = (x - self.mean) / self.std
         if self.fp16:
             x = x.half()
         return self.model(x)
