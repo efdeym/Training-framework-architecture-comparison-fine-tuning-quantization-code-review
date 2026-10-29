@@ -42,6 +42,8 @@ Repo okumasından (bu oturumda C6'da doğrulanacak): `benchmark.py` ve `predict.
 
 Deneme scripti: `scratch/c4_pretrained_predict.py`. Yüklenen model `mobilenetv3_small_100.lamb_in1k` (timm 1.0.30), `eval()` modunda ve `inference_mode` içinde çalıştırıldı. `resolve_data_config` çıktısı: `input_size` (3, 224, 224), interpolation bicubic, mean (0.485, 0.456, 0.406), std (0.229, 0.224, 0.225), `crop_pct` 0.875; `create_transform` bunu `Resize(256, bicubic, antialias=True)` + `CenterCrop(224)` + normalize olarak kurdu. Örnek görsel `valid\1\image_06739.jpg` (500x628) için çıktı `(1, 1000)` oldu ve tahmin edilen indeks 985; bu indeks ImageNet'e aittir, çiçek sınıfı değildir. Bu ön işlemenin `deliver/predict.py` ile karşılaştırılması C8'e kaldı, burada karşılaştırma yapılmadı.
 
+Kullanım: python scratch/c4_pretrained_predict.py <görsel_yolu>
+
 ## C5 - softmax + topk ile top-5
 
 Deneme scripti: `scratch/c5_top5.py` (C4 ile aynı model, ön işleme ve görsel).
@@ -59,5 +61,9 @@ Softmax toplamı 1.0 çıktı. Top-5 (indeks, olasılık, ad):
 | 5 | 324 | 0.0163 | cabbage butterfly |
 
 İlk beşin olasılık toplamı 0.5011. Adlar, `timm.data.imagenet_info.ImageNetInfo("imagenet-1k")` içindeki `index_to_description` çıktısıdır (C4'teki 985 indeksinin adı bu çıktıdan alındı). Bu çağrının ağ kullanıp kullanmadığı doğrulanmadı. Klasör `1`'in hangi çiçek türü olduğunu bilmiyoruz, bu yüzden "daisy" çıktısı ile veri setindeki sınıf arasında bir bağ kurmuyoruz.
+
+Argüman sürümünün çalıştırmasında HF_TOKEN uyarısı görüldü (ağırlık önbellekte olduğu halde Hub'a erişim denendi); hangi çağrıdan geldiği doğrulanmadı.
+
+Kullanım: python scratch/c5_top5.py <görsel_yolu>
 
 
