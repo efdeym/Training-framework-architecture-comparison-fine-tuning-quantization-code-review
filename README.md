@@ -135,6 +135,8 @@ python scripts/evaluate.py --ckpt runs/mnv3_small/best.pt --data data/shadow_tes
 5. Opsiyonel: büyük bir öğretmenle (ör. ResNet50) distillation (`configs/distill_student.yaml`)
 6. **Son:** `configs/final_fit.yaml` (train+valid+test birleşik), `last.pt` ile export
 
+**final_fit kararı (A27):** Seçilen reçete (Large, LP-FT, EMA 0,999, 224, 30 epoch, seed 42) train+valid+test birleşimiyle bir kez yeniden eğitilir (+%25 veri). Bu eğitimden sonra valid/test'te ölçülen doğruluk anlamsızdır (veri eğitimde görüldü); yalnızca sağlık kontrolü yapılır (~%100 beklenir). Yedek: `runs/mnv3_large_ema` ve `runs/mobilenetv3_full`. Kazanç küçüktür (gizli testte birkaç görsel), riski sağlık kontrolü ve yedekle sınırlandırıldı.
+
 **ResNet50 hakkında:** Yaklaşık 95-100 MB olduğu için teslim modeli olarak uygun değil. Karşılaştırma referansı veya distillation öğretmeni olarak kullanılabilir.
 
 **Seçim kuralı (öneri):** Gölge testte ekibin belirlediği doğruluk tabanının altına düşmeyen modeller arasından en küçük MB ve en düşük ms'li olan seçilir.
