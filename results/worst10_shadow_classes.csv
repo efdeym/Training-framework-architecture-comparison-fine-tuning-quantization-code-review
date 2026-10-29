@@ -1,0 +1,11 @@
+class_idx,folder,flower_name,total,correct,accuracy
+9,15,yellow iris,3,0,0.0
+10,16,globe-flower,3,0,0.0
+13,19,balloon flower,3,0,0.0
+16,21,fire lily,3,0,0.0
+17,22,pincushion flower,3,0,0.0
+18,23,fritillary,3,0,0.0
+22,27,prince of wales feathers,3,0,0.0
+24,29,artichoke,3,0,0.0
+27,31,carnation,3,0,0.0
+29,33,love in the mist,3,0,0.0
