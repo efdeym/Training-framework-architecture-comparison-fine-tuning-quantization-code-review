@@ -38,3 +38,8 @@ Aday: Large. Not: train.log test_top1=0,9927 (last.pt?) ile evaluate.py test=0,9
 LP=3 (ana koşu) valid %99,27 / en iyi %99,39; LP=0 valid %99,14 / en iyi %99,39. 
 Fark 1 görsel (gürültü sınırı). Karar: LP=3 varsayılan kalır. LP=0 daha hızlı ısınıyor ama sonuç aynı.
 
+### Ön işleme ve bozulma dayanıklılığı (valid, 818 görsel)
+Varsayılan %99,39; 224'e sıkıştırma %98,90; bulanıklık %98,29; karanlık %98,90; parlak %98,41; JPEG-20 %98,66. Ön işleme farkı en fazla 4 görsel; bozulmalarda düşüş en fazla %1,1. Script: scripts/robustness_probe.py.
+
+### Temiz ortam testi
+timm kurulu olmayan ortamda (torch 2.5.1+cpu, numpy, pillow) deliver/predict.py flower modelini yükleyip tahmin üretti.
