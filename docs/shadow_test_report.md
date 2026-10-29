@@ -1,3 +1,5 @@
+> **UYARI:** Bu sonuçlar doğrulanmadı (script ve görseller repoda yok, etiket eşlemesi kontrol edilmedi). Genelleme sonucu olarak yorumlanmamalıdır.
+
 # Gölge Test (Shadow Test) ve Genelleme Riski Raporu (B28, B31)
 
 - **Tarih:** 29 Ekim 2026
@@ -44,3 +46,4 @@ Aşağıdaki sınıflarda modeller gerçek dünya fotoğraflarında en düşük 
 |       33 | love in the mist         |          0 |
 
 Hatalı tahminlerin görsel ızgarası ve detaylı dağılımı `results/worst10_shadow_predictions.png` adresine kaydedilmiştir.
+
