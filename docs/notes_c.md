@@ -67,3 +67,22 @@ Argüman sürümünün çalıştırmasında HF_TOKEN uyarısı görüldü (ağı
 Kullanım: python scratch/c5_top5.py <görsel_yolu>
 
 
+
+## C6 - Adil gecikme ölçümü: warm-up, synchronize, batch=1
+
+Kaynak: `src/flowers/evaluation/benchmark.py` içindeki `measure_latency_ms` (kod okundu; bu adımda yeni ölçüm yapılmadı).
+
+- **Warm-up:** Ölçümden önce `n_warmup=20` boş çağrı yapılır. İlk çağrılar genelde sonraki çağrılardan yavaş olabilir (ilk kullanım hazırlıkları, önbellekler); bu genel bilgidir, bu projede ayrıca ölçülmedi. Warm-up çağrıları süreye katılmaz.
+- **synchronize:** `device` CUDA ise her çağrıdan sonra `torch.cuda.synchronize()` çağrılır, çünkü GPU işleri asenkron çalışır ve senkronize edilmezse ölçülen süre gerçek hesaplama süresini yansıtmaz. CPU'da senkronizasyon yoktur (boş fonksiyon). Bu makinede CUDA yok, bu yol çalıştırılmadı.
+- **batch=1:** Girdi `torch.randn(1, 3, H, W)` biçimindedir. Ölçüm tek görsel gecikmesidir (`ms/görüntü`), toplu işlem verimi değildir.
+- Ek olarak `torch.inference_mode()`, sabit thread sayısı (`threads=1` varsayılan) ve ortalama/medyan/p95/std raporlanır (`n_runs=200`).
+
+## C7 - Dummy checkpoint ile çıkarım zinciri denemesi
+
+`best.pt` (A kişisinin baseline ağırlığı) projede ve `C:\dev` altında bulunamadı. Bu yüzden zincir rastgele ağırlıklı geçici bir modelle denendi; bu bir doğruluk veya gerçek hız sonucu değildir.
+
+- `scratch/c7_make_dummy_ckpt.py` ile `mobilenetv3_small_100`, 102 sınıf, `pretrained=False` checkpoint üretildi.
+- `scripts/export.py` ile TorchScript'e çevrildi: 6.17 MB, `dtype=fp32`.
+- `scripts/benchmark.py` (cpu, 1 thread, tag `dummy-c7`) satırı: `mean_ms` 11.299, `p95_ms` 15.741, `size_mb` 6.17, `img_size` 224, `top1` nan.
+- Benchmark geçici dizinde çalıştırıldı ve `results/benchmarks.csv` kirletilmedi; geçici dosyalar silindi.
+- Tek çalıştırma, tek makine. Gerçek `best.pt` ile tekrarlanmadı.
