@@ -9,23 +9,61 @@ Katmanlı mimari ve sınıf amaçları için: [`docs/ARCHITECTURE.md`](docs/ARCH
 
 | Aşama | Durum |
 |---|---|
-| Kurulum, testler (3/3 geçiyor) | Tamam |
-| Sahte veriyle uçtan uca duman testi | Tamam |
-| Gerçek veride eğitim (MobileNetV3-Large, MobileNetV3-Small) | Tamam |
-| Boyut ve gecikme ölçümü (Small) | Tamam |
-| Large ile adil kıyas (aynı epoch, aynı ayar) | Sırada |
-| fp16 / int8 sıkıştırma, giriş boyutu denemeleri | Sırada |
-| Gölge test seti (farklı kaynaklı görseller) | Sırada |
-| Organizatör soruları (donanım, ölçüm biçimi, teslim formatı) | Cevap bekleniyor |
+| Kurulum, testler | Tamam |
+| Gerçek veride eğitim ve adil kıyas (Small, Large, EffNet-B0, ConvNeXt-nano) | Tamam |
+| LP-FT, LP epoch sayısı, test anı giriş boyutu, kuantizasyon kararı | Tamam |
+| Export, normalizasyon modele gömme, temiz ortam testi | Tamam |
+| EMA, final_fit kararı, nihai eğitim | Sırada |
+| Nihai `flower_model.pt`, uçtan uca süre ölçümü | Sırada |
+| Gölge test | Doğrulanmadı, bkz. Bilinen riskler |
+| Organizatör soruları | Cevap alınamadı, varsayımlar aşağıda |
 
 ## Sonuçlar
 
-Yalnızca ölçülmüş değerler yazılmıştır. Boş bırakılan hücreler henüz ölçülmedi.
+## Sonuçlar
 
-| Model | Eğitim | Valid top-1 | Test top-1 | Gecikme ort. (ms) | Dosya (MB) |
+Yalnızca ölçülmüş değerler. Doğruluklar `evaluate.py` ile (valid 818, test 819 görsel); gecikme CPU, batch=1, yalnızca model ileri geçişi.
+
+| Model | Eğitim | Valid | Test | CPU ms (1 thr / 14 thr) | MB |
 |---|---|---|---|---|---|
-| `mobilenetv3_small_100` | 10 epoch, backbone donuk (yalnızca kafa) | %93,0 (en iyi, epoch 8) | %91,8 | 3,02 | 6,20 |
-| `mobilenetv3_large_100` | 1 epoch, backbone donuk | %88,6 | %87,5 | ölçülmedi | ölçülmedi |
+| `mobilenetv3_small_100` | 10 epoch, backbone donuk | %93,03 | %92,31 | 3,2 / - | 6,50 |
+| `mobilenetv3_small_100` | 30 epoch, LP-FT | %98,04 | %97,44 | 3,05 / 7,76 | 6,50 |
+| **`mobilenetv3_large_100`** | 30 epoch, LP-FT | **%99,39** | **%99,27** | **8,39** / 15,64 | 17,33 |
+| `efficientnet_b0` | 30 epoch, LP-FT | %99,14 | %99,02 | 16,40 / 19,53 | 16,53 |
+| `convnext_nano` | 30 epoch, LP-FT | %99,39 | %99,39 | 52,47 / - | 60,10 |
+
+**Nasıl okunmalı**
+- Valid'de 1 görsel = %0,12. Large ile EffNet arasındaki 2 görsellik fark gürültü sınırındadır; hız farkı (8,4 vs 16,4 ms) belirleyicidir.
+- ConvNeXt boyuttan (60 MB) ve hızdan elendi.
+- Önerilen sınırlar (50 ms, 35 MB) kesinleşmedi; Large bunların çok altında kalıyor.
+- Gecikmeler geliştirme bilgisayarına aittir. Batch=1'de çok thread, tek thread'den yavaştır.
+- Valid/test bu veri setindendir; gizli test için mutlak başarıyı değil, modeller arası kıyası gösterir.
+
+### Optimizasyon deneyleri (yaramayanlar dahil)
+
+| Deney | Sonuç | Karar |
+|---|---|---|
+| Backbone donuk vs LP-FT (Small) | %93,0 → %98,0 | LP-FT kullanılır |
+| LP epoch 3 vs 0 (Large) | %99,27 vs %99,14, fark 1 görsel | LP=3 kalır |
+| Test anında giriş büyütme (256/288/320) | Doğruluk düştü | 224'te kalındı |
+| Çok thread (batch=1) | 15,6 ms vs 8,4 ms (1 thread) | Ek ayar yapılmadı |
+| fp16 / int8 kuantizasyon | Hız ve boyut zaten sınırların altında | Atlandı |
+| TTA (flip vb.) | Ölçülmedi, süreyi iki katlar | Eklenmedi |
+| Large + EffNet ensemble | 33,9 MB, 35 MB sınırına 1,1 MB | Bırakıldı (risk) |
+| EMA (0,999) | Sonuç bekleniyor | - |
+
+### Ön işleme dayanıklılığı (valid, 818 görsel, Large)
+
+| Varyant | Doğruluk |
+|---|---|
+| Varsayılan (resize + merkez kırp) | %99,39 |
+| 224x224'e sıkıştırma | %98,90 |
+| Bulanıklık (sigma=2) | %98,29 |
+| Karanlık (x0,6) | %98,90 |
+| Parlak (x1,4) | %98,41 |
+| JPEG kalite 20 | %98,66 |
+
+Script: `scripts/robustness_probe.py`.
 
 **Nasıl okunmalı**
 - İki satır **adil bir kıyas değildir**: Small 10 epoch, Large yalnızca 1 epoch eğitildi. Large'ı aynı ayarla (10 epoch, backbone donuk) tekrar eğitip ölçtükten sonra karşılaştırma yapılacak.
@@ -104,15 +142,17 @@ python scripts/evaluate.py --ckpt runs/mnv3_small/best.pt --data data/shadow_tes
 
 ## Teslim: modeli kullanma (değerlendiren kişi için)
 
-Gereken: `flower_model.pt` ve `predict.py` (sadece `torch`, `numpy`, `Pillow`).
+   
 
-```python
-from predict import FlowerClassifier
+   Gereken: `flower_model.pt` ve `predict.py` (sadece `torch`, `numpy`, `Pillow`).
 
-clf = FlowerClassifier("flower_model.pt", device="cpu")   # GPU: device="cuda"
-print(clf.predict("foto.jpg"))                            # örn. "73" (orijinal sınıf adı)
-print(clf.predict_batch(["a.jpg", "b.jpg"]))
-```
+   ```python
+   from predict import FlowerClassifier
+
+   clf = FlowerClassifier("flower_model.pt", device="cpu")   # GPU: device="cuda"
+   print(clf.predict("foto.jpg"))                            # örn. "73" (orijinal sınıf adı)
+   print(clf.predict_batch(["a.jpg", "b.jpg"]))
+   ```
 
 Doğrudan PyTorch ile (kendi ön işlemenle):
 
@@ -120,16 +160,17 @@ Doğrudan PyTorch ile (kendi ön işlemenle):
 import json, torch
 extra = {"meta.json": ""}
 model = torch.jit.load("flower_model.pt", _extra_files=extra).eval()
-meta = json.loads(extra["meta.json"])      # idx_to_class, mean, std, img_size, crop_pct
-# giriş: [B,3,img_size,img_size], RGB, [0,1] -> (x-mean)/std ; çıkış: logits [B,102]
-# sınıf adı: meta["idx_to_class"][str(idx)]
+meta = json.loads(extra["meta.json"])      # idx_to_class, img_size, crop_pct, norm_in_model
+# giriş: [B,3,img_size,img_size], RGB, [0,1] aralığında. Normalizasyon (mean/std) MODELİN İÇİNDE, dışarıda uygulama.
+# ön işleme: kısa kenarı int(img_size/crop_pct) yap (bicubic), merkez kırp img_size x img_size
+# çıkış: logits [B,102]; sınıf adı: meta["idx_to_class"][str(idx)]
 ```
 
 > Not: `torch.jit` yeni PyTorch sürümlerinde "deprecated" uyarısı verir, işlev görür. Değerlendirme ortamının PyTorch sürümüyle aynı veya yakın sürümde export edip test et.
 
 ## Değerlendirme koşulları (organizatörden cevap bekleniyor)
 
-Cevap gelene kadar şu varsayımlarla ilerliyoruz; cevap farklı çıkarsa yalnızca ölçüm ayarları değişir:
+Rehberde yer alanlar: Intel i7, 16 GB, GPU yok; skor = 0,60 x doğruluk + 0,25 x hız + 0,15 x boyut; Tmax=50 ms, Smax=35 MB (önerilen). Şu varsayımlarla ilerliyoruz:
 
 - Donanım: CPU, 1 thread
 - Ölçüm: batch=1, yalnızca modelin ileri geçişi
