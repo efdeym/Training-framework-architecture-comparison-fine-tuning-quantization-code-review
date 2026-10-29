@@ -38,6 +38,14 @@ Aday: Large. Not: train.log test_top1=0,9927 (last.pt?) ile evaluate.py test=0,9
 LP=3 (ana koşu) valid %99,27 / en iyi %99,39; LP=0 valid %99,14 / en iyi %99,39. 
 Fark 1 görsel (gürültü sınırı). Karar: LP=3 varsayılan kalır. LP=0 daha hızlı ısınıyor ama sonuç aynı.
 
+### Aday seçimi (A26)
+Kural: doğruluk gürültü sınırı içinde eşitse en düşük ms ve MB seçilir.
+- ConvNeXt-nano: doğruluk Large ile eşit (%99,39), ama 60 MB ve 52 ms; elendi.
+- EffNet-B0: Large'dan 2 görsel geride, 2 kat yavaş; elendi.
+- Large: valid %99,39 / test %99,27, yeni export 8,62 ms (p95 9,10), 16,52 MB.
+Gölge test doğrulanmadığı için karar dışı bırakıldı; yerine valid üzerinde bozulma testi yapıldı (Large en fazla %1,1 düştü).
+Karar: mobilenetv3_large_100, LP-FT (LP=3), EMA 0,999, 224. Doğruluk gizli testte %99 ise tahmini skor ≈ 99,4 (hız ve boyut tavanda).
+
 ### Ön işleme ve bozulma dayanıklılığı (valid, 818 görsel)
 Varsayılan %99,39; 224'e sıkıştırma %98,90; bulanıklık %98,29; karanlık %98,90; parlak %98,41; JPEG-20 %98,66. Ön işleme farkı en fazla 4 görsel; bozulmalarda düşüş en fazla %1,1. Script: scripts/robustness_probe.py.
 

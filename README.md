@@ -13,14 +13,13 @@ Katmanlı mimari ve sınıf amaçları için: [`docs/ARCHITECTURE.md`](docs/ARCH
 | Gerçek veride eğitim ve adil kıyas (Small, Large, EffNet-B0, ConvNeXt-nano) | Tamam |
 | LP-FT, LP epoch sayısı, test anı giriş boyutu, kuantizasyon kararı | Tamam |
 | Export, normalizasyon modele gömme, temiz ortam testi | Tamam |
-| EMA, final_fit kararı, nihai eğitim | Sırada |
+| EMA (0,999) | Valid %99,27 / test %99,51 (log); baseline %99,27 / %99,39, fark 1 görsel; eğri daha düzgün | Maliyetsiz, final_fit'te kullanılabilir (A27) |
 | Nihai `flower_model.pt`, uçtan uca süre ölçümü | Sırada |
 | Gölge test | Doğrulanmadı, bkz. Bilinen riskler |
 | Organizatör soruları | Cevap alınamadı, varsayımlar aşağıda |
 
 ## Sonuçlar
 
-## Sonuçlar
 
 Yalnızca ölçülmüş değerler. Doğruluklar `evaluate.py` ile (valid 818, test 819 görsel); gecikme CPU, batch=1, yalnızca model ileri geçişi.
 
