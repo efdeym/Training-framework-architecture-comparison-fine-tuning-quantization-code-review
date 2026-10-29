@@ -86,3 +86,64 @@ Kaynak: `src/flowers/evaluation/benchmark.py` içindeki `measure_latency_ms` (ko
 - `scripts/benchmark.py` (cpu, 1 thread, tag `dummy-c7`) satırı: `mean_ms` 11.299, `p95_ms` 15.741, `size_mb` 6.17, `img_size` 224, `top1` nan.
 - Benchmark geçici dizinde çalıştırıldı ve `results/benchmarks.csv` kirletilmedi; geçici dosyalar silindi.
 - Tek çalıştırma, tek makine. Gerçek `best.pt` ile tekrarlanmadı.
+
+## C20-C25 - FP16 / INT8 denemeleri ve teknik karar notu
+
+Ortam: CPU, 1 thread, batch=1, torch 2.14.1+cpu. `torch.backends.quantized.supported_engines` yalnızca `['onednn']`. Doğruluk (top1) bu bölümde ölçülmedi; hiçbir varyantın doğruluk etkisi bilinmiyor.
+
+### C20 - FP16 export (TorchScript, `results/benchmarks.csv`)
+
+| Model | dtype | Boyut (MB) | Ortalama (ms) | p95 (ms) |
+|---|---|---|---|---|
+| mnv3_small | fp32 | 6.20 | 7.194 | 9.895 |
+| mnv3_small_fp16 | fp16 | 3.49 | 6.858 | 9.623 |
+| mnv3_large | fp32 | 16.52 | 17.169 | 22.116 |
+| mnv3_large_fp16 | fp16 | 8.78 | 13.098 | 16.335 |
+
+- Boyut yaklaşık yarıya indi (small 6.20 → 3.49 MB, large 16.52 → 8.78 MB). Tam 2 kat değil, çünkü dosyada ağırlık dışı veriler (graph, `meta.json`) de var.
+- **Gecikme beklenen gibi artmadı, azaldı; ama bu fp16 hesabından kaynaklanmıyor olabilir.** `scripts/benchmark.py` CPU'da fp16 modeli `.float()` ile fp32'ye çevirir (satır 17-18), yani ölçülen hesap fp32'dir; yalnızca ağırlıklar fp16'dan fp32'ye geri yuvarlanmış halde yüklenir. Düşüşün nedeni doğrulanmadı: ölçüm gürültüsü (aynı makinede çalıştırmalar arası %10-20 oynama gözlendi, örn. large fp32 TorchScript 17.169 ms, eager 15.010 ms) ya da fp32/fp16 export farkları (fp32 `freeze` edilir, fp16 edilmez) olabilir. Tek çalıştırmalarla "fp16 CPU'da daha hızlı" sonucu çıkarılmamalı.
+- fp16'ya yuvarlamanın doğruluk etkisi `scratch/c24_accuracy.py` ile valid kümesinde (818 görsel, CPU) ölçüldü; ağırlıklar fp16'ya çevrilip fp32'ye geri alındı (CPU'daki teslim yolunun hesabı):
+
+| Model | top-1 fp32 | top-1 fp16 (yuvarlanmış) | Tahmin uyumu |
+|---|---|---|---|
+| mnv3_small | 0.9315 | 0.9303 | 0.9988 |
+| mnv3_large | 0.9939 | 0.9939 | 1.0000 |
+
+  small'da fark 0.0012 (818 görselde yaklaşık 1 görsel), large'da fark yok. Yalnızca valid kümesi, tek ölçüm; `test` kümesi ölçülmedi.
+
+### C21 - Dinamik INT8 (`quantize_dynamic`, Linear, qint8)
+
+Deneme scripti: `scratch/c21_c22_quant_experiment.py` ve `scratch/c21_c22_diag.py` (eager model, CSV'ye yazmaz).
+
+| Model | Conv2d param. | Linear param. | Dönüşen Linear | Boyut (state_dict MB) | Ort. ms (fp32 → dinamik) |
+|---|---|---|---|---|---|
+| mnv3_small | %92.8 | %6.4 | 0 | 6.30 → 6.30 | 9.345 → 9.448 |
+| mnv3_large | %96.4 | %3.0 | 0 | 16.71 → 16.71 | 15.010 → 15.970 |
+
+- Modelde tek Linear var: `classifier`. Tipi `timm.layers.linear.Linear` (`nn.Linear`'in alt sınıfı). `quantize_dynamic` hiçbir katmanı dönüştürmedi (dönüşen sayısı 0, boyut değişmedi). Muhtemel neden: dönüşüm eşlemesi tam tip eşleşmesine bakıyor ve timm'in alt sınıfı eşleşmiyor; bu nedeni ayrıca doğrulamadım (kaynak kodu okumadım).
+- Dönüşseydi bile etki küçük olurdu: Linear parametrelerin yalnızca %3.0 (large) ve %6.4'ü (small). Kaba tahmin: Linear ağırlıkları 4 bayttan 1 bayta inse large'da ~0.39 MB (~%2.3), small'da ~0.31 MB (~%5) kazanç. Conv2d katmanları dinamik kuantizasyondan etkilenmez (yalnızca Linear/RNN desteklenir).
+- Gecikme farkı gürültü düzeyinde (large'da ~1 ms daha yavaş, tek çalıştırma).
+
+### C22 - Statik PTQ INT8 (`static_ptq_int8`, `src/flowers/compression/quantize.py`)
+
+- Fonksiyon FX graph mode kullanır: `calib_loader`'dan `(x, y)` çiftleri bekler, `n_batches` (varsayılan 20) kalibrasyon batch'i çalıştırır, `backend` varsayılanı `"x86"`.
+- **Varsayılanla çalışmıyor:** bu ortamda `RuntimeError: quantized engine X86 is not supported`; yalnızca `onednn` destekleniyor. Fonksiyon `backend="onednn"` ile çağrılınca çalıştı (large, çıktı `(1, 102)`).
+- **Kalibrasyon verisi rastgele tensördü** (yalnızca çalışabilirlik testi); gerçek kalibrasyon ve doğruluk ölçümü yapılmadı. Gerçek kullanımda eğitim/valid görsellerinden bir `DataLoader` gerekir.
+- Rastgele kalibrasyonlu onednn modeli large için ort. 71.513 ms, p95 99.712 ms; aynı eager yolda fp32 15.010 ms idi. Yani bu ortamda ~5 kat yavaş. Nedeni (backend, hardswish/SE gibi katmanların işlenişi, FX grafiği) incelenmedi. Boyutu ölçülmedi.
+- `torch.ao.quantization` kullanımdan kalkıyor (DeprecationWarning: 2.10'da kaldırılacak, `torchao` öneriliyor).
+
+### C24-C25 - Kıyaslama ve karar
+
+| Varyant | Boyut (MB) | Gecikme (ms) | Top-1 (valid) | Not |
+|---|---|---|---|---|
+| FP32 small / large | 6.20 / 16.52 | 7.194 / 17.169 | 0.9315 / 0.9939 | TorchScript, referans |
+| FP16 small / large | 3.49 / 8.78 | 6.858 / 13.098 | 0.9303 / 0.9939 | Boyut ~yarı; gecikme farkı fp16 hesabından değil (CPU'da fp32'ye çevrilir) |
+| Dinamik INT8 | değişmedi | fark yok | ölçülmedi | Linear dönüşmedi; dönüşse bile Linear payı %3-6 |
+| Statik INT8 (onednn, rastgele kalibrasyon) | ölçülmedi | large: 71.5 (fp32 eager 15.0) | ölçülmedi | Yavaşladı; gerçek kalibrasyon yok |
+
+Karar (kural: fayda yoksa uygulama):
+- **Dinamik INT8: uygulanmıyor.** Conv ağırlıklı MobileNet'te hedef katman (Linear) parametrelerin %3-6'sı; boyut/hız kazancı ihmal edilebilir ve bu ortamda dönüşüm hiç gerçekleşmedi.
+- **Statik INT8: uygulanmıyor (şimdilik).** Varsayılan backend çalışmıyor, onednn ile CPU gecikmesi arttı, doğru kalibrasyon ve doğruluk ölçümü yok. Faydası bu ortamda gösterilemedi.
+- **FP16: CPU gecikmesi için fayda yok; yalnızca dosya boyutu için isteğe bağlı.** CPU'da hesap fp32'de yapıldığı için hız kazancı beklenmez. Boyut yarıya iner ve valid doğruluğu pratikte korunur (small -0.0012, large 0), ama kazanç sadece depolama/dağıtım boyutunda.
+- **CPU çıkarımı için model: `mobilenetv3_large` FP32 TorchScript (önerilen).** Valid top-1 0.9939, small'a göre +0.0624 puan; bedeli ~2.4 kat gecikme (17.169 vs 7.194 ms, tek görsel, 1 thread) ve ~2.7 kat boyut (16.52 vs 6.20 MB). Bu gecikme tek görsel çıkarımı için küçük sayılabilir ama bir gecikme/boyut hedefi verilmedi; sıkı bir sınır varsa `mnv3_small` (0.9315) alternatiftir. Karar valid kümesine dayanır, test kümesi ve tekrarlı ölçüm yapılmadı.
+- Dosya boyutu önemliyse large için FP16 (8.78 MB, aynı doğruluk) eklenebilir; bu bir tercih, CPU hızı için gerekçe değil.
