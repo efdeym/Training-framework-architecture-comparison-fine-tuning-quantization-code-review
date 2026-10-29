@@ -9,3 +9,4 @@ __pycache__/
 /data/ 
 flower_data.tar.gz 
 *.egg-info/ 
+model_weights.zip
