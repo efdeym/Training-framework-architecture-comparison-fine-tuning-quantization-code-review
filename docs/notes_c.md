@@ -147,3 +147,46 @@ Karar (kural: fayda yoksa uygulama):
 - **FP16: CPU gecikmesi için fayda yok; yalnızca dosya boyutu için isteğe bağlı.** CPU'da hesap fp32'de yapıldığı için hız kazancı beklenmez. Boyut yarıya iner ve valid doğruluğu pratikte korunur (small -0.0012, large 0), ama kazanç sadece depolama/dağıtım boyutunda.
 - **CPU çıkarımı için model: `mobilenetv3_large` FP32 TorchScript (önerilen).** Valid top-1 0.9939, small'a göre +0.0624 puan; bedeli ~2.4 kat gecikme (17.169 vs 7.194 ms, tek görsel, 1 thread) ve ~2.7 kat boyut (16.52 vs 6.20 MB). Bu gecikme tek görsel çıkarımı için küçük sayılabilir ama bir gecikme/boyut hedefi verilmedi; sıkı bir sınır varsa `mnv3_small` (0.9315) alternatiftir. Karar valid kümesine dayanır, test kümesi ve tekrarlı ölçüm yapılmadı.
 - Dosya boyutu önemliyse large için FP16 (8.78 MB, aynı doğruluk) eklenebilir; bu bir tercih, CPU hızı için gerekçe değil.
+
+## C26-C30 - Teslimat: `deliver/` ve çıkarım adımları
+
+**Teslim edilen model:** `mobilenetv3_large` FP32 TorchScript (Gün 4 kararı). Proje kökündeki `mobilenetv3_large.pt` dosyası `deliver/flower_model.pt` olarak kopyalandı (README'nin beklediği ad; SHA-256 aynı, 17.325.946 bayt ≈ 16.52 MB). `cat_to_name.json` (102 sınıf, klasör adı → çiçek adı) `deliver/` içine kopyalandı.
+
+`deliver/` içeriği: `predict.py`, `flower_model.pt`, `cat_to_name.json`. Gereken paketler: `torch`, `numpy`, `Pillow` (`timm` ve proje paketi gerekmez).
+
+### predict.py
+
+- Girdi doğrulama (C9/C10 taslağından taşındı): dosya yoksa `FileNotFoundError`; dosya geçerli görsel değilse ya da bozuk/kesikse `InvalidImageError` (`ValueError` alt sınıfı); yol klasörse yine `InvalidImageError`. `UnidentifiedImageError` yanında `OSError` de yakalanır, çünkü kesik dosya `OSError` verir.
+- `FlowerClassifier.predict` ve `predict_batch` davranışı aynı (README'deki kullanım bozulmadı). Yeni: `predict_topk(path, k=5)` → `[{"class", "name", "probability"(%)}, ...]`.
+- Komut satırı **değişti**: eski `python predict.py model.pt foto.jpg` biçimi yerine `--image` / `--image_dir` (ikisi birbirini dışlar, biri zorunlu). Model yolu `--model` ile verilir, varsayılan `predict.py`'nin yanındaki `flower_model.pt`.
+- Windows notu: model dosya nesnesiyle yüklenir (`open(..., "rb")`). `torch.jit.load` yolu `Masaüstü`, `Sınıf` gibi ASCII olmayan karakterler içeren mutlak yollarda açamadı (aynı dosya göreli yolla ve dosya nesnesiyle açıldı).
+
+### Örnek komutlar
+
+```
+python deliver/predict.py --image foto.jpg
+python deliver/predict.py --image_dir gorseller/ --topk 3
+python deliver/predict.py --image foto.jpg --json
+python deliver/predict.py --model baska_model.pt --image foto.jpg --device cuda
+```
+
+Çıkış kodları: 0 = hepsi başarılı, 1 = en az bir görsel hatalı (klasör modunda hatalı dosyalar akışı durdurmaz, sonda özet yazılır), 2 = model/klasör bulunamadı ya da klasörde desteklenen görsel yok. Klasörde yalnızca `.jpg .jpeg .png .bmp .webp .tif .tiff` taranır.
+
+Python'dan: `from predict import FlowerClassifier; clf = FlowerClassifier("flower_model.pt"); clf.predict_topk("foto.jpg")`.
+
+### Uçtan uca doğrulama (CPU, valid görselleri ve geçici dosyalarla)
+
+| Senaryo | Sonuç |
+|---|---|
+| `valid/1/image_06739.jpg` | Top-1 sınıf 1 `pink primrose` %60.87 (sonra 52 `wild pansy` %2.18) |
+| `valid/10/` içinden bir görsel | Top-1 sınıf 10 `globe thistle` %92.33 |
+| Olmayan dosya | `FileNotFoundError` mesajı, çıkış kodu 1 |
+| Metin içerikli `.jpg` | `InvalidImageError (UnidentifiedImageError)`, çıkış kodu 1 |
+| Kesik görsel | `InvalidImageError (OSError)`, çıkış kodu 1 |
+| `--image_dir` (2 geçerli, 2 hatalı, 1 `.txt`) | 2 başarılı, 2 hatalı raporlandı; `.txt` atlandı |
+| `--json`, `--image` + `--image_dir` birlikte, argümansız, olmayan klasör | JSON çıktı; son üçü argparse/klasör hatası (çıkış kodu 2) |
+| `pytest -q tests` | 4 geçti (değişiklikten önce de 4 geçiyordu) |
+
+Sınırlar: Doğrulama yalnızca CPU'da ve birkaç görselle yapıldı; GPU yolu (`--device cuda`) çalıştırılmadı. İki doğru örnek, genel doğruluk kanıtı değildir (valid top-1 için Gün 4 notuna bakın). Testler `predict.py` için yalnızca ön işlemeyi kapsıyor; yeni CLI ve `predict_topk` için otomatik test eklenmedi.
+
+`.gitignore` içinde `*.pt` olduğu için `deliver/flower_model.pt` git'e otomatik girmez; teslimde ayrıca eklenmesi (ya da başka yolla iletilmesi) gerekir.
