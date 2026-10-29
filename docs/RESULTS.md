@@ -28,3 +28,8 @@ Batch=1'de 14 thread, 1 thread'den yavaş çıktı. Ön işleme dahil uçtan uca
 - mnv3_small_ft: `best.pt` 28.10'da aynı exp_name ile başlatılıp yarıda kalan bir çalıştırmayla ezildi; `last.pt` (30. epoch) kullanıldı. Log'daki en iyi valid %98,53 (epoch 28), ağırlıkları kayıp.
 - ConvNeXt-nano 35 MB ve 50 ms sınırını aşıyor, elendi.
 - Gölge test, uçtan uca süre, TTA/ensemble: bekliyor. Nihai model kararı henüz verilmedi.
+
+### EffNet-B0 eğri notu (A19)
+Valid 9-13. epoch'ta doygunluğa ulaştı (%98,9-99,1); sonraki 17 epoch iyileşme getirmedi. 
+Large ile fark 2 görsel (gürültü sınırı); hız farkı (16,4 vs 8,4 ms) belirleyici. 
+Aday: Large. Not: train.log test_top1=0,9927 (last.pt?) ile evaluate.py test=0,9902 (best.pt?) farkı kontrol edilecek.
