@@ -10,7 +10,7 @@ Instructor's priority: **a model that runs in the shortest time and occupies the
 
 | Name Surname | Student ID | Role |
 |---|---|---|
-| Elif Dilbeste Yıldırım | 22020021 | Technical Lead (model and training) |
+| Elif Dilbeste Yıldırım | 220201021 | Technical Lead (model and training) |
 | B | | Data and evaluation |
 | C | | Inference, measurement, and compression |
 | Hayrunnisa Öztürk | 220204048 | Environment, documentation, and quality |
