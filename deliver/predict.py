@@ -81,7 +81,7 @@ class FlowerClassifier:
         l, t = int(round((w - self.size) / 2.0)), int(round((h - self.size) / 2.0))
         img = img.crop((l, t, l + self.size, t + self.size))
         x = torch.from_numpy(np.asarray(img, dtype=np.uint8).copy()).permute(2, 0, 1).float() / 255.0
-        return x
+        return x.contiguous()
 
     def _logits(self, paths) -> torch.Tensor:
         x = torch.stack([self._load(p) for p in paths]).to(self.device)
