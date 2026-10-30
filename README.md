@@ -167,7 +167,10 @@ meta = json.loads(extra["meta.json"])      # idx_to_class, img_size, crop_pct, n
 # çıkış: logits [B,102]; sınıf adı: meta["idx_to_class"][str(idx)]
 ```
 
+> Not: Model, hem ham [0,1] aralığındaki RGB tensörleri hem de ImageNet ile önceden normalize edilmiş girdileri otomatik algılar ve sorunsuz kabul eder (çifte normalizasyona karşı korumalıdır).
+
 > Not: `torch.jit` yeni PyTorch sürümlerinde "deprecated" uyarısı verir, işlev görür. Değerlendirme ortamının PyTorch sürümüyle aynı veya yakın sürümde export edip test et.
+
 
 ## Değerlendirme koşulları (organizatörden cevap bekleniyor)
 
