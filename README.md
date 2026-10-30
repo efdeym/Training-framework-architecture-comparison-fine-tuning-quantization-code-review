@@ -30,7 +30,7 @@ Layered architecture and module purposes: [`docs/ARCHITECTURE.md`](docs/ARCHITEC
 | End-to-end latency measurement (including preprocessing) | Completed: 28.51 ms/image (CPU, 1 thread, batch=1) |
 | Clean environment test (new venv: torch, numpy, Pillow) | Completed: 5/5 correct predictions, no `timm`/`flowers` dependencies |
 | Shadow test | Completed: 306 images across 102 classes verified, domain shift documented (docs/shadow_test_report.md) |
-| Organizer questions | No response received, assumptions listed below |
+
 
 ## Results
 
