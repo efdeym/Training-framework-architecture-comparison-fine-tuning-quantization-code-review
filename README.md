@@ -11,8 +11,8 @@ Instructor's priority: **a model that runs in the shortest time and occupies the
 | Name Surname | Student ID | Role |
 |---|---|---|
 | Elif Dilbeste Yıldırım | 220201021 | Technical Lead (model and training) |
-| B | | Data and evaluation |
-| C | | Inference, measurement, and compression |
+| Karya Demirciler | 220201050 | Data and evaluation |
+| Rabia Sude Karakoç | 230204045 | Inference, measurement, and compression |
 | Hayrunnisa Öztürk | 220204048 | Environment, documentation, and quality |
 
 Layered architecture and module purposes: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Team plan and Git rules: [`docs/TEAM.md`](docs/TEAM.md).
@@ -29,7 +29,7 @@ Layered architecture and module purposes: [`docs/ARCHITECTURE.md`](docs/ARCHITEC
 | final_fit training and final `deliver/flower_model.pt` | Completed: sanity check valid 817/818 (99.88%), test 819/819 (100%) |
 | End-to-end latency measurement (including preprocessing) | Completed: 28.51 ms/image (CPU, 1 thread, batch=1) |
 | Clean environment test (new venv: torch, numpy, Pillow) | Completed: 5/5 correct predictions, no `timm`/`flowers` dependencies |
-| Shadow test | Unverified, see Known Risks |
+| Shadow test | Completed: 306 images across 102 classes verified, domain shift documented (docs/shadow_test_report.md) |
 | Organizer questions | No response received, assumptions listed below |
 
 ## Results
