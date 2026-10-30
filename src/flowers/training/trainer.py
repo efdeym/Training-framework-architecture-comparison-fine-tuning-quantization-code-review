@@ -83,15 +83,22 @@ class Trainer:
                 self.model, self.train_loader, self.criterion, self.optimizer, self.device, epoch, total, warm,
                 self.scaler, self.mixer, self.ema, self.teacher, self.distill_fn,
                 c.amp, c.channels_last, c.grad_clip, step_offset=step)
+            if self.cfg.data.final_fit:
+                # valid eğitim verisinin parçası: burada ölçülen skor bağımsız değildir.
+                self.log.info(f"epoch {epoch+1}/{c.epochs} loss={loss:.4f} [FINAL FIT]"
+                              f"{' [LP]' if lp else ''}")
+                self.mlog.log({"train/loss": loss}, epoch)
+                continue
             val = self.evaluate(self.valid_loader)
             self.log.info(f"epoch {epoch+1}/{c.epochs} loss={loss:.4f} val_top1={val:.4f}{' [LP]' if lp else ''}")
             self.mlog.log({"train/loss": loss, "val/top1": val}, epoch)
-            if val >= best and not self.cfg.data.final_fit:
-                best = val; self._save("best.pt", epoch, val)
-        self._save("last.pt", c.epochs - 1, val)   # final_fit'te valid eğitimde olduğu için last.pt kullan
-        if self.test_loader is not None:
-            self.log.info(f"test_top1={self.evaluate(self.test_loader):.4f} (bu veri setinden; gizli teste güvenme!)")
-        return best
+            if val > best:
+                best = val
+                self._save("best.pt", epoch, val)
+        # Test seti her deney sonunda otomatik değerlendirilmez.
+        # Model seçimi tamamlanınca scripts/evaluate.py ile yalnızca bir kez değerlendirin.
+        self._save("last.pt", c.epochs - 1, None if self.cfg.data.final_fit else val)
+        return None if self.cfg.data.final_fit else best
 
     def _save(self, name, epoch, val):
         m = self._eval_model()

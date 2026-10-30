@@ -13,4 +13,7 @@ if __name__ == "__main__":
     cfg = load_config(a.config, a.overrides)
     seed_everything(cfg.seed)
     best = Trainer(cfg).fit()
-    print(f"Bitti. best val_top1={best:.4f}")
+    if best is None:
+        print("Final eğitim bitti. last.pt kaydedildi; validation skoru raporlanmadı.")
+    else:
+        print(f"Bitti. best val_top1={best:.4f}")
