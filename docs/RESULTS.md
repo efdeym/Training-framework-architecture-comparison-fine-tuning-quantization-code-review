@@ -66,3 +66,6 @@ JPEG çözme + resize + model (predict.py), 1 thread, 200 test görseli: 35,28 m
 ### Vazgeçilen maddeler
 A23: 192/160 ile yeniden eğitim yapılmadı; hız ve boyut tavanda, küçültmenin kazancı yok, doğruluk riski var.
 A25: distillation yapılmadı; doğruluk %99+ ve hız/boyut tavanda.
+
+### Uçtan uca süre (final model, predict.py)
+JPEG çözme + resize + model, 1 thread, 200 test görseli: ~13-14 ms/görsel (ön işleme ~4 ms, model ~8,7-9,3 ms). predict.py girdi tensörünü contiguous yapıyor (önce ~35 ms görünen ölçümler arka plan yükünden; ayrıca ~1,2 ms kazanç). Laptopta aralıklı yük sıçramaları görüldü (tek ölçümde 38 ms); 50 ms sınırının altında kalıyor. Scriptler: scripts/e2e_profile.py, e2e_profile2.py.
