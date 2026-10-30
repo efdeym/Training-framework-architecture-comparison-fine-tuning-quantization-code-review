@@ -51,3 +51,18 @@ Varsayılan %99,39; 224'e sıkıştırma %98,90; bulanıklık %98,29; karanlık 
 
 ### Temiz ortam testi
 timm kurulu olmayan ortamda (torch 2.5.1+cpu, numpy, pillow) deliver/predict.py flower modelini yükleyip tahmin üretti.
+
+### Uçtan uca süre (final model)
+JPEG çözme + resize + model (predict.py), 1 thread, 200 test görseli: 35,28 ms/görsel (yalnızca model ~9,1 ms). 50 ms sınırının altında, pay 1,4 kat; ön işleme dökümü için scripts/e2e_profile.py.
+
+### Son kod incelemesi (A33)
+- Veri sızıntısı: image_08077 dışlandı, MD5 taraması train/test ve valid/test 0 çakışma
+- Normalizasyon: modele gömülü, checkpoint ile TorchScript 10/10 aynı sınıf (max logit farkı 4,5e-6)
+- Etiket eşlemesi: meta.json ve checkpoint eşlemesi aynı (0→"1", 1→"10", 2→"100")
+- Seed: seed_everything(42) train.py'de çağrılıyor; cudnn.benchmark açık, GPU eğitimi bit-bit tekrarlanabilir değil
+- model.eval(): predict, benchmark ve evaluate yolunda doğrulandı
+- Benchmark adilliği: 20 ısınma, 200 ölçüm, batch=1, inference_mode, 1 thread
+
+### Vazgeçilen maddeler
+A23: 192/160 ile yeniden eğitim yapılmadı; hız ve boyut tavanda, küçültmenin kazancı yok, doğruluk riski var.
+A25: distillation yapılmadı; doğruluk %99+ ve hız/boyut tavanda.
