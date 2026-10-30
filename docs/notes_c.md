@@ -190,3 +190,46 @@ Python'dan: `from predict import FlowerClassifier; clf = FlowerClassifier("flowe
 Sınırlar: Doğrulama yalnızca CPU'da ve birkaç görselle yapıldı; GPU yolu (`--device cuda`) çalıştırılmadı. İki doğru örnek, genel doğruluk kanıtı değildir (valid top-1 için Gün 4 notuna bakın). Testler `predict.py` için yalnızca ön işlemeyi kapsıyor; yeni CLI ve `predict_topk` için otomatik test eklenmedi.
 
 `.gitignore` içinde `*.pt` olduğu için `deliver/flower_model.pt` git'e otomatik girmez; teslimde ayrıca eklenmesi (ya da başka yolla iletilmesi) gerekir.
+
+## D (kod inceleme) geri bildirimi: normalizasyon, etiket eşlemesi, model seçimi
+
+İnceleme scriptleri: `scratch/d_norm_check.py`, `scratch/d_variants.py` (yalnızca terminale yazar). Model: `mobilenetv3_large` FP32, valid 818 görsel, CPU, `predict.py` ön işlemesi.
+
+### 1. Çifte normalizasyon
+
+- Güncel `src/flowers/export/packager.py` (`_NormWrapper`) normalizasyonu modelin **içine** gömer ve meta'ya `"norm_in_model": True` yazar. Güncel `deliver/predict.py` (`_logits`) bu bayrağa bakar: bayrak varsa dışarıda normalize etmez, yoksa `(x - mean) / std` uygular. Kod yolunda normalizasyon tek yerde yapılıyor, çifte normalizasyon yok.
+- **Mevcut `deliver/flower_model.pt` eski export'tan** (güncel packager öncesi): meta'da `norm_in_model` yok, grafta mean/std buffer'ı ve `sub`/`div` izi yok. Yani bu dosyada normalizasyon modelin içinde **değil**; `predict.py` onu dışarıda tek kez yapıyor (doğru çalışıyor, aşağıdaki A).
+- **Tutarsızlık:** README "normalizasyon MODELİN İÇİNDE, dışarıda uygulama" diyor, ama mevcut `deliver/flower_model.pt` bunu sağlamıyor. README'ye uyup bu dosyaya ham `[0,1]` girdi veren biri normalizasyonsuz çalıştırır (aşağıdaki D).
+
+| Varyant (valid, 818 görsel) | Top-1 |
+|---|---|
+| A) Mevcut teslim: eski export + `predict.py` tek normalizasyon | 0.9939 |
+| B) Güncel packager ile yeniden export, normalizasyon modelin içinde, dışarıda yok | 0.9939 (A ile logit farkı 0, aynı tahmin %100) |
+| C) Güncel export + dışarıda da normalizasyon (**çifte**) | 0.0147 |
+| D) Eski export, hiç normalizasyon yok (README sözleşmesi + mevcut dosya) | 0.7555 |
+
+Çifte normalizasyon yakalanması kolay bir hatadır (valid'de ~%1.5'e çöker); mevcut teslim ve güncel kod yolu bu hatayı içermiyor. Önerilen düzeltme: teslim dosyasını güncel packager ile yeniden export etmek (B, A ile birebir aynı sonuç), böylece README ile dosya tutarlı olur. Henüz uygulanmadı.
+
+### 2. Etiket eşlemesi ve shadow düşüşü
+
+- Sınıf klasörleri `ImageFolder` ile **alfabetik** (dize) sıralanır: indeks 0..5 = `1, 10, 100, 101, 102, 11`. `argmax` indeksi klasör numarası değildir ve +1 ofset yanlıştır. Doğru eşleme `meta["idx_to_class"]` (checkpoint'in `class_to_idx` tersi). `predict.py` bunu kullanıyor, ofset yok.
+- Kanıt: A varyantı valid'de 0.9939. Naif eşlemeler çöker: `argmax+1 == klasör no` → 0.0880, `argmax == klasör no` → 0.1491. Yani bu hata olsaydı valid'de de görülürdü.
+- `results/worst10_shadow_classes.csv`: `class_idx` 9, 10, 13 ↔ klasör 15, 16, 19, alfabetik sıradaki karşılıkla (dizin 9 = "15", 10 = "16", 13 = "19") birebir uyuşuyor. 10 isim `deliver/cat_to_name.json` ile eşleşiyor (0/10 uyuşmazlık); `results/class_to_name_mapping.csv` ile `cat_to_name.json` arasında 0/102 uyuşmazlık. Shadow değerlendirmesinde indeks-klasör eşlemesinde ofset görünmüyor.
+- **Shadow düşüşünün kök nedeni doğrulanamadı.** Repoda shadow görselleri (`data/shadow_test`) ve shadow değerlendirme scripti yok (yalnızca raporlar ve CSV'ler var); `docs/shadow_test_report.md` kendisi de "doğrulanmadı" uyarısı taşıyor. Dolayısıyla shadow'daki %18.95-26.80'in nedenini (veri dağılımı mı, shadow tarafındaki ön işleme/kodlama mı) bu repoyla ayırt edemiyoruz.
+- Elde edilen bilgiler: etiket ofseti ve çifte normalizasyon bu repodaki teslim yolunda yok; `predict.py` yolu valid'de 0.9939. Ama shadow'u üreten pipeline'ın hangi normalizasyonu ve eşlemeyi kullandığı bilinmiyor. Hipotezler (doğrulanmadı): shadow scripti `predict.py`/güncel export yerine eski/yanlış bir kombinasyon kullandı (ör. D benzeri normalizasyonsuz çalıştırma valid'de bile 0.7555'e düşürüyor); gerçek dış fotoğraflarda EXIF yönü uygulanmıyor (`predict.py` ve `ImageFolder` `exif_transpose` yapmıyor); gerçek alan kayması. Karar için shadow script ve görseller gerekli: aynı 306 görsel `predict.py` ile çalıştırılıp sonuç karşılaştırılmalı.
+- Shadow n = 306 (sınıf başına 3), tek sınıf doğruluğu 0, 1/3, 2/3 ya da 1; küçük örneklem.
+
+### 3. Model seçimi: 0.60·Accuracy + 0.25·Latency_Score + 0.15·Size_Score
+
+**Eşikler henüz kesinleşmedi, bu yüzden aşağıdaki skorlar geçici bir normalizasyonla hesaplandı:** `Latency_Score = en_düşük_gecikme / gecikme`, `Size_Score = en_küçük_boyut / boyut` (en iyi aday = 1.0). Gecikme `results/benchmarks.csv` (CPU, 1 thread, batch=1), boyut TorchScript MB. Accuracy iki kaynakla verildi: valid (ölçüldü) ve shadow (doğrulanmamış, yukarıya bakın).
+
+| Model | Valid acc | Shadow acc | Gecikme (ms) | Boyut (MB) | Latency_Score | Size_Score | Skor (valid acc) | Skor (shadow acc) |
+|---|---|---|---|---|---|---|---|---|
+| mnv3_small | 0.9315 | 0.1895 | 7.194 | 6.20 | 1.000 | 1.000 | **0.959** | **0.514** |
+| mnv3_large | 0.9939 | 0.2680 | 17.169 | 16.52 | 0.419 | 0.375 | 0.757 | 0.322 |
+| effnet_b0 | 0.9914 | 0.2451 | 37.100 | 15.76 | 0.194 | 0.393 | 0.702 | 0.255 |
+| convnext_nano | 0.9939 | 0.2516 | 98.416 | 57.32 | 0.073 | 0.108 | 0.631 | 0.185 |
+
+**Sonuç:** Bu geçici (en iyiye oranlama) normalizasyonla `mnv3_small` kazanıyor, `mnv3_large` değil. Gün 4'teki "mobilenetv3_large" seçimi bu formül ve bu normalizasyonla gerekçelendirilemiyor. Large'ın kazanması için doğruluk kazancının (+0.0624 valid, ayrıca +0.0785 shadow) hız ve boyut kaybını aşması gerekir. Başabaş koşulu (valid doğruluğu ile): `0.25·(1 − L_large) + 0.15·(1 − S_large) < 0.6·(0.9939 − 0.9315) = 0.0374`. Eşikler small ve large'ı ikisini de tam puanlıyorsa (ör. gecikme ve boyut sınırları ≥ 17.2 ms ve ≥ 16.5 MB ise) large kazanır (0.996 > 0.959). Eşikler kesinleşince bu tablo yeniden hesaplanmalı ve model seçimi ona göre teyit edilmeli. Bu notta nihai seçim değiştirilmedi.
+
+Sınırlar: Gecikmeler tek çalıştırma, geliştirme makinesi (değerlendirme makinesinde farklı çıkar, README de belirtiyor); fp16/int8 varyantları bu tabloda yok; shadow doğrulukları doğrulanmamış.
