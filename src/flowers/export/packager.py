@@ -44,7 +44,10 @@ class _NormWrapper(torch.nn.Module):
         self.register_buffer("std", torch.tensor(std, dtype=torch.float32).view(1, 3, 1, 1))
 
     def forward(self, x):
-        return self.model((x - self.mean) / self.std)
+        # Girdi ham [0,1] ise normalize et; zaten normalize (negatif değer içeren) geldiyse dokunma.
+        ham = (x.amin(dim=(1, 2, 3), keepdim=True) >= 0).to(x.dtype)
+        x = ham * ((x - self.mean) / self.std) + (1 - ham) * x
+        return self.model(x)
 
 
 def load_checkpoint_model(ckpt_path: str):
