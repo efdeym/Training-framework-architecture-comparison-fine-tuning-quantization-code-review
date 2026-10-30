@@ -10,3 +10,5 @@ __pycache__/
 flower_data.tar.gz 
 *.egg-info/ 
 model_weights.zip
+
+!deliver/flower_model.pt
